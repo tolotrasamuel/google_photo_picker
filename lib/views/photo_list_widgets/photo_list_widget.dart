@@ -4,15 +4,27 @@ import 'package:google_photo_picker/services/google_photo_api/google_photo_api.d
 import 'package:google_photo_picker/views/photo_list_widgets/photo_gallery.dart';
 import 'package:google_photo_picker/views/photo_thumbnail.dart';
 import 'package:googleapis/photoslibrary/v1.dart';
+import 'package:shared_views/utils/extensions/build_context_extensions.dart';
 import 'package:shared_views/utils/toast_util.dart';
+import 'package:shared_views/views/load_more_on_scroll_widget.dart';
 import 'package:shared_views/views/photo_viewer/photo_viewer_widget.dart';
 import 'package:shared_views/views/photoviewer_gallery/photoviewer_gallery.dart';
+
+///Users/samuel/StudioProjects/shared_views/lib/views/photo_viewer/single_photo_picker_widget.dart
+import 'package:shared_views/views/photo_viewer/single_photo_picker_widget.dart';
 import 'package:shared_views/views/refreshable_list/refreshable_list.dart';
 import 'package:shared_views/views/short_text_input_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 class PhotoListWidget extends StatefulWidget {
+  final bool pickerMode;
   final String albumId;
-  const PhotoListWidget({super.key, required this.albumId});
+
+  const PhotoListWidget({
+    super.key,
+    required this.albumId,
+    this.pickerMode = false,
+  });
 
   @override
   State<PhotoListWidget> createState() => _PhotoListWidgetState();
@@ -31,17 +43,17 @@ enum MediaActions implements BaseAction {
 
   final String label;
   final Color? color;
+
   const MediaActions(this.label, {this.color});
 }
 
 enum AlbumActions implements BaseAction {
   duplicate("Duplicate Album"),
-  selectRanking("Select Ranking"),
-  viewInGooglePhoto("View in Google Photo"),
-  viewDeleted("View Deleted"); // show undelete button
+  viewInGooglePhoto("View Album in Google Photo");
 
   final String label;
   final Color? color;
+
   const AlbumActions(this.label, {this.color});
 }
 
@@ -51,6 +63,8 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
 
   Album? album;
 
+  SearchMediaItemsResponse? lastResults;
+
   @override
   void initState() {
     super.initState();
@@ -59,10 +73,8 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
 
   Future<void> _reload() async {
     items.clear();
-    await fetchRanking();
     await fetchAlbum();
     final List<MediaItem> medias;
-
 
     // items.addAll(medias);
     setState(() {});
@@ -70,26 +82,31 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
   }
 
   Future<void> fetchAlbum() async {
+    album = await _photoApi.getAlbumById(widget.albumId);
     setState(() {});
     return;
   }
 
-  Future<void> fetchRanking() async {
-    setState(() {});
-    return;
-  }
+  Future<void> _viewPhoto(MediaItem media) async {
+    final baseUrl = media.baseUrl;
+    if (baseUrl == null) return;
+    final originalUrl = _photoApi.getOriginalSizeUrl(baseUrl);
 
-  void _viewPhoto(String media1url) {
-    Navigator.of(context).push(
+    final videoInfo = media.mediaMetadata?.video;
+    final pickedUrl = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(),
-          body: PhotoViewerWidget(
-            imageUrl: media1url,
-          ),
+        builder: (context) => SinglePhotoPickerWidget(
+          imageUrl: originalUrl,
+          showPicker: widget.pickerMode,
+          // description: videoInfo?.toString(),
+          label: "Use this ${videoInfo == null ? "photo" : "video"}",
         ),
       ),
     );
+    print("is picker Mode ${widget.pickerMode}");
+    if (pickedUrl != true) return;
+    if (!widget.pickerMode) return;
+    Navigator.of(context).pop(media.id);
   }
 
   Widget buildRankingTile(List<String> ranking, String title) {
@@ -100,7 +117,6 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
       },
     );
   }
-
 
   List<String> _getPhotoUrlList() {
     final imageUrls = items
@@ -118,11 +134,14 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
         title: Text(album?.title ?? ""),
         actions: [
           IconButton(
-              onPressed: () {
-                _viewPhotoInGallery(0);
-                // _viewPhoto(media1url
-              },
-              icon: Icon(Icons.photo_library)),
+            onPressed: () {
+              _viewPhotoInGallery(0);
+              // _viewPhoto(media1url
+            },
+            icon: Icon(
+              Icons.photo_library,
+            ),
+          ),
           IconButton(
             onPressed: () async {
               final album = this.album;
@@ -135,60 +154,60 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
       ),
       body: Column(
         children: [
-          // DropdownButtonFormField<SortBy>(
-          //   value: SortBy.rankAsc,
-          //   onChanged: (value) {
-          //     activityForm.activityStatus = value ?? ActivityStatus.todo;
-          //     setState(() {});
-          //   },
-          //   items: SortBy.values
-          //       .map(
-          //         (e) => DropdownMenuItem(
-          //           value: e,
-          //           child: Text(e.label),
-          //         ),
-          //       )
-          //       .toList(),
-          //   decoration: InputDecoration(
-          //     labelText: 'Activity Status',
-          //     border: OutlineInputBorder(),
-          //   ),
-          // ),
           Expanded(
-            child: RefreshableWidget(
-              onRefresh: _reload,
+            child: LoadMoreOnScrollWidget<MediaItem>(
+              viewType: ViewType.grid,
+              gridCount: () {
+                const itemSize = 256;
+                final screenWidth = context.mediaSize.width;
+                return screenWidth ~/ itemSize;
+              },
+              fetchMore: () async {
+                final albumId = widget.albumId;
+                final pageToken = lastResults?.nextPageToken;
+                print("Fetching album $albumId");
+                final results = await _photoApi.fetchNextPageContent(
+                  albumId: albumId,
+                  pageToken: pageToken,
+                );
+                lastResults = results;
+                return results.mediaItems ?? [];
+              },
+              items: items,
               noResultMessage: "No Media found",
-              isEmpty: items.isEmpty,
-              scrollableView: ListView.builder(
-                itemBuilder: (context, index) {
-                  final media = items[index];
-                  final url = media.baseUrl;
-                  if (url == null) return Container();
-                  final thumbnailUrl = _photoApi.getThumbnailUrl(url);
-                  // print(thumbnailUrl);
-                  return InkWell(
-                    onLongPress: () {
-                      // _onMediaTileLongPressed(media);
-                    },
-                    onTap: () async {
-                      final baseUrl = media.baseUrl;
-                      if (baseUrl == null) return;
-                      final originalUrl = _photoApi.getOriginalSizeUrl(baseUrl);
-                      // _viewPhoto(originalUrl);
-                      _viewPhotoInGallery(index);
-                    },
-                    child: Row(
+              reset: _reload,
+              builder: (media) {
+                final url = media.baseUrl;
+                if (url == null) return Container();
+                final thumbnailUrl = _photoApi.getThumbnailUrl(url);
+                // print(thumbnailUrl);
+                return InkWell(
+                  onLongPress: () {
+                    // _onMediaTileLongPressed(media);
+                    final baseUrl = media.baseUrl;
+                    if (baseUrl == null) return;
+                    final originalUrl = _photoApi.getOriginalSizeUrl(baseUrl);
+                    ToastUtil.copyToClipboard(context, originalUrl);
+                  },
+                  onTap: () async {
+                       _viewPhoto(media);
+                    // _viewPhotoInGallery(index);
+                  },
+                  child: Container(
+                    // color: Colors.green,
+                    child: Column(
                       children: [
-                        PhotoThumbnail(
-                          thumbnailUrl: thumbnailUrl,
+                        Expanded(
+                          child: PhotoThumbnail(
+                            thumbnailUrl: thumbnailUrl,
+                          ),
                         ),
-                        Text("${media.filename}"),
+                        // Text("${media.filename}"),
                       ],
                     ),
-                  );
-                },
-                itemCount: items.length,
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -200,8 +219,8 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
     final actions = [
       // AlbumActions.duplicate,
       AlbumActions.viewInGooglePhoto,
-      AlbumActions.selectRanking,
-      AlbumActions.viewDeleted,
+      // AlbumActions.selectRanking,
+      // AlbumActions.viewDeleted,
     ];
 
     final action = await ToastUtil.moreTappedDialog(actions, context);
@@ -215,13 +234,6 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
         _onViewInGooglePhoto(activityFeed);
         break;
 
-      case AlbumActions.selectRanking:
-        _onSelectRanking();
-        break;
-
-      case AlbumActions.viewDeleted:
-        _onViewDeleted();
-        break;
       default:
         break;
     }
@@ -230,7 +242,7 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
   Future<void> _onDuplicate(Album activityFeed) async {
     final name = await ShortInputDialog.promptScheduleName(
       context,
-     title: "${activityFeed.title} - Copy",
+      title: "${activityFeed.title} - Copy",
     );
     if (name == null) return;
     final albumId = activityFeed.id;
@@ -246,37 +258,14 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
     launchUrl(uri);
   }
 
-  final List<String> debugRanking = [];
-  Future<void> _onSelectRanking() async {
-    final result = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        insetPadding: EdgeInsets.symmetric(horizontal: 16),
-        title: Text("Ranking"),
-        content: Container(
-          width: double.maxFinite,
-        ),
-      ),
-    );
-    if (result is! List<String>) {
-      return;
-    }
-    debugRanking.clear();
-    debugRanking.addAll(result);
-    _reload();
-  }
-
-  Future<void> _onViewDeleted() async {
-    _reload();
-  }
-
-
   void _viewPhotoInGallery(int index) {
     final imageUrls = _getPhotoUrlList();
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            PhotoGalleryWidget(imageUrls: imageUrls, initialIndex: index),
+        builder: (context) => PhotoGalleryWidget(
+          imageUrls: imageUrls,
+          initialIndex: index,
+        ),
       ),
     );
   }

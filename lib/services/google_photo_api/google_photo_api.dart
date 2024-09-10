@@ -10,9 +10,10 @@ import 'package:http/http.dart' as http;
 
 const thumbnailSize = 'w256-h256';
 const originalSize = 'd';
+const originalSizeVideo = 'd';
 
 final iosClientId =
-    // '223888301605-utcolsavqjq3raprfjjml0mvcmh8ptik.apps.googleusercontent.com';
+// '223888301605-utcolsavqjq3raprfjjml0mvcmh8ptik.apps.googleusercontent.com';
     '223888301605-n8uecni4l4erpbhb80dub2mm5sfkfpf4.apps.googleusercontent.com';
 final androidClientId =
     '223888301605-56d2n3eciapd5cu9268t2q52vj0gqd3t.apps.googleusercontent.com';
@@ -57,10 +58,10 @@ class GooglePhotoApi {
   Future<http.Client> _getHttpClient() async {
     // final bool isAuthorized = await _googleSignIn.canAccessScopes(scopes);
     // print("Is authorized: $isAuthorized");
-    final _client = this.client;
-    if (_client != null) {
-      print("Old Access token: ${_client.credentials.accessToken}");
-      return _client;
+    final clientCache = this.client;
+    if (clientCache != null) {
+      print("Old Access token: ${clientCache.credentials.accessToken}");
+      return clientCache;
     }
     // GoogleSignInAccount? user = await _googleSignIn.signInSilently();
     // user ??= await _googleSignIn.signIn();
@@ -165,19 +166,16 @@ class GooglePhotoApi {
 
   Future<List<gp.MediaItem>> _getAlbumContent(String albumId) async {
     final client = await _getHttpClient();
-    final photo = gp.PhotosLibraryApi(client);
 
     List<gp.MediaItem> mediaItems = [];
     String? pageToken;
 
     while (true) {
       print("Fetching album $albumId");
-      final request = SearchMediaItemsRequest(
+      final results = await fetchNextPageContent(
         albumId: albumId,
-        pageSize: 100,
         pageToken: pageToken,
       );
-      final results = await callApi(photo.mediaItems.search(request));
       pageToken = results.nextPageToken;
       mediaItems.addAll(results.mediaItems ?? []);
       if (pageToken == null) {
@@ -187,6 +185,8 @@ class GooglePhotoApi {
     return mediaItems;
   }
 
+  /// tested this, size was 16.2kb
+  /// https://lh3.googleusercontent.com/lr/AAJ1LKdVgCg3Cxh7iqwCZtVGKWixOkSr080u2ztOaJs-18Yd6W-X8K8eHLkos9Oinis19zrca5z3gPHC0ENOySwvcm8w9BuLCrqm10Eo8gWM7zo5SmkONxoTYoeYQNWdnzblTRT9s4ZFULO16gDN0FkoCndEqrrFSgsTxb6Udoap5ZjPfkmcSUVfscXTAxozaDUOrNyMYqPkN5lWX9zlgwXSmbR1b97t8-RRLDXVuXD0Q6xgs31aF1eRWFYz8gOU3lntZvnF3ftbTECfznupWQ5MeGaRWTTawBgGpCPjU5-V90PvBySAFLnm0tT8xgSwip6QgpjXaGAqvwbZtlvGcdet8tgZWUXSDVmU3x-akjtsAUp6k_FuQg0T7w4JTeGyUX3T3P_qt1B1v2nGZlrFXwp7DAj_EsAuEey-VAhcVPzY-8lmR5oUBIelz6YV665EdFT_OfynIzIdI4S4Q9B_E09I4ugldnrpefQ9jw8Y37CUobB-P1Zj4OoINdLhGIGjyl1P2PKDSXzphbAbmXSMbTG4fHnmvl-YiXQcreLIMvKQoKwbtDmmVGHoMMuqJ9J5d15YJZ0bP3arUujgi0LQFLwjGRxxEapTqp_DJD4tAo21W2gwgvXirDp-PfkSdQHl8esRrxFcfDICgMfyvFtxSigTe8Y_I_UkZXhbxOyey42ueYTay4DnFrCgz-eVg46ImMj--FvyC12lp4Y-M_53o7b85P97qgiAtBmOcW-B3S1ll_nuaHfdtvAfDo5nP2tYjvJQrb9hpR5EVd6jA-zjuob9L-g4cxGlnG2nqCiCIHDb1RUq3witG3PdzS6emR3-NHBMTSDmCzn8Cv6Lai-hx6qf5ZtkGuRLkaDZO9sjBpCXJMpNOT_YSbQ0ZeucuNNocC0aaj2g7VgJuNvpUK7fomXkfi1tV1aSX1luBOJviHlene3xYaYCXip7YDQJAsS2NTz4t7OKd6rB8GwXtEFp4PEJ-rhYYBr81aEpgrnJ84vUnQjtoP-hiRArApSBo2k-a0pPqKo4-aPGtg-uwpkgbSwxOQ8sxO6KQW4LKLCxaAR8=w256-h256
   String getImageUrl(String url, String size) {
     // item['baseUrl'] + f'={size}'
     return "$url=$size";
@@ -198,6 +198,10 @@ class GooglePhotoApi {
 
   String getOriginalSizeUrl(String url) {
     return getImageUrl(url, originalSize);
+  }
+
+  String getOriginalSizeVideoUrl(String url) {
+    return getImageUrl(url, originalSizeVideo);
   }
 
   Future<gp.Album> getAlbumById(String albumId) async {
@@ -236,7 +240,7 @@ class GooglePhotoApi {
     final newAlbum = await photo.albums.create(request);
     final mediaItems = await getAlbumContent(albumId);
     final mediaItemIds =
-        mediaItems.map((e) => e.id).whereType<String>().toList();
+    mediaItems.map((e) => e.id).whereType<String>().toList();
 
     const batchSize = 50;
     int start = 0;
@@ -262,7 +266,20 @@ class GooglePhotoApi {
     currentUser = null;
   }
 
-  // void launchURL(String url) {
-  //   launchUrl(url)
-  // }
+  Future<gp.SearchMediaItemsResponse> fetchNextPageContent({required String albumId, String? pageToken}) async {
+    final client = await _getHttpClient();
+    final photo = gp.PhotosLibraryApi(client);
+
+    final request = SearchMediaItemsRequest(
+      albumId: albumId,
+      pageSize: 100,
+      pageToken: pageToken,
+    );
+    final results = await callApi(photo.mediaItems.search(request));
+    return results;
+  }
+
+// void launchURL(String url) {
+//   launchUrl(url)
+// }
 }

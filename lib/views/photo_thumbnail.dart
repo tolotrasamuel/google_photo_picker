@@ -3,7 +3,13 @@ import 'package:flutter/material.dart';
 
 class PhotoThumbnail extends StatelessWidget {
   final String? thumbnailUrl;
-  const PhotoThumbnail({super.key, this.thumbnailUrl});
+  final double? size;
+
+  const PhotoThumbnail({
+    super.key,
+    this.thumbnailUrl,
+    this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,12 +18,14 @@ class PhotoThumbnail extends StatelessWidget {
 
   Widget _getAlbumThumbnail(String? coverPhotoBaseUrl) {
     return Card(
+      margin: EdgeInsets.zero,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minWidth: 128,
         ),
         child: Container(
-
+          width: size,
+          height: size,
           child: _getAlbumThumbnailImage(coverPhotoBaseUrl),
         ),
       ),
@@ -30,9 +38,9 @@ class PhotoThumbnail extends StatelessWidget {
     }
     return CachedNetworkImage(
       imageUrl: url,
-      fit: BoxFit.cover,
-      height: 128,
-      width: 128,
+      fit: BoxFit.fitWidth,
+      height: size,
+      // width: 128,
       placeholder: (context, url) => Center(
         child: Container(
           height: 32,

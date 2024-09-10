@@ -6,14 +6,18 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/photoslibrary/v1.dart';
 import 'package:shared_core/utils/extensions/extensions.dart';
 import 'package:shared_views/utils/toast_util.dart';
+
 // gap
 import 'package:gap/gap.dart';
 import 'package:shared_views/views/load_more_on_scroll_widget.dart';
+
 // lib/views/dropdown/dropdown_selector.dart
 import 'package:shared_views/views/dropdown/dropdown_selector.dart';
 import 'package:shared_views/views/loaders/fullscreen_loader.dart';
+
 // collection
 import 'package:collection/collection.dart';
+
 enum SortBy implements BaseActionIcon {
   title,
   date,
@@ -40,6 +44,7 @@ enum SortBy implements BaseActionIcon {
         return Colors.red;
     }
   }
+
   IconData get icon {
     switch (this) {
       case SortBy.title:
@@ -50,12 +55,11 @@ enum SortBy implements BaseActionIcon {
         return Icons.format_list_numbered;
     }
   }
-
 }
+
 enum AlbumType implements BaseActionIcon {
   shared,
   owned;
-
 
   IconData get icon {
     switch (this) {
@@ -65,6 +69,7 @@ enum AlbumType implements BaseActionIcon {
         return Icons.photo_library;
     }
   }
+
   Color get color {
     switch (this) {
       case AlbumType.shared:
@@ -82,15 +87,6 @@ enum AlbumType implements BaseActionIcon {
         return "Owned";
     }
   }
-
-  // BaseActionIcon toBaseActionIcon() {
-  //   switch (this) {
-  //     case AlbumType.shared:
-  //       return BaseActionIcon("Shared",
-  //     case AlbumType.owned:
-  //       return BaseActionIcon(this, "Owned");
-  //   }
-  // }
 }
 
 enum AlbumActions implements BaseAction {
@@ -99,11 +95,17 @@ enum AlbumActions implements BaseAction {
 
   final String label;
   final Color? color;
+
   const AlbumActions(this.label, {this.color});
 }
 
 class AlbumsWidget extends StatefulWidget {
-  const AlbumsWidget({super.key});
+  final bool pickerMode;
+
+  const AlbumsWidget({
+    super.key,
+    this.pickerMode = false,
+  });
 
   @override
   State<AlbumsWidget> createState() => _AlbumsWidgetState();
@@ -115,6 +117,7 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
   AlbumType albumType = AlbumType.owned;
 
   SortBy sortBy = SortBy.date;
+
   @override
   void initState() {
     super.initState();
@@ -125,7 +128,6 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-
           /// show logged in header
           IconButton(
             onPressed: () async {
@@ -157,7 +159,6 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
             },
             icon: Icon(Icons.sort),
           ),
-
         ],
       ),
       body: Padding(
@@ -179,7 +180,13 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
             Expanded(
               child: LoadMoreOnScrollWidget<Album>(
                 // viewType: ViewType.grid,
-                header: Text("Results: ${items.length}", textAlign: TextAlign.start,),
+                header: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    "Results: ${items.length}",
+                    textAlign: TextAlign.start,
+                  ),
+                ),
                 updatingMessage: "Updating albums...",
                 items: items,
                 fetchMore: () async {
@@ -192,42 +199,55 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
                 },
                 builder: (album) {
                   final thumbnailUrl = album.coverPhotoBaseUrl;
-                  return InkWell(
-                    onLongPress: () {
-                      // _onMediaTileLongPressed(media);
-                    },
-                    onTap: () async {
-                      final albumId = album.id;
-                      if (albumId == null) return;
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>  PhotoListWidget(albumId: albumId),
-                          ),
-                      );
-                    },
-                    child: Container(
-                      // color: Colors.green,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          PhotoThumbnail(
-                            thumbnailUrl: thumbnailUrl,
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Container(
-                              // color: Colors.pink,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("${album.title}",
-                                      style: TextStyle(fontSize: 18)),
-                                  Text("${album.mediaItemsCount} items"),
-                                ],
-                              ),
+                  return Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onLongPress: () {
+                        // _onMediaTileLongPressed(media);
+                        final albumUrl = album.productUrl;
+                        if (albumUrl == null) return;
+                        ToastUtil.copyToClipboard(context, albumUrl);
+                      },
+                      onTap: () async {
+                        final albumId = album.id;
+                        if (albumId == null) return;
+                        final mediaId = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => PhotoListWidget(
+                              albumId: albumId,
+                              pickerMode: widget.pickerMode,
                             ),
                           ),
-                        ],
+                        );
+                        if (mediaId is! String) return;
+                        if (!widget.pickerMode) return;
+                        Navigator.of(context).pop(mediaId);
+                      },
+                      child: Container(
+                        // color: Colors.green,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            PhotoThumbnail(
+                              size: 128,
+                              thumbnailUrl: thumbnailUrl,
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                // color: Colors.pink,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("${album.title}",
+                                        style: TextStyle(fontSize: 18)),
+                                    Text("${album.mediaItemsCount} items"),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -291,12 +311,12 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
     final items = await fetchAlbums().withLocalLoader(context);
     switch (sortBy) {
       case SortBy.title:
-        items.sortBy((e)=>e.title ?? "");
-            break;
+        items.sortBy((e) => e.title ?? "");
+        break;
       case SortBy.date:
         break;
       case SortBy.count:
-        items.sortByDesc<num>((e)=>e.mediaItemsCount?.tryAsInt ?? 0);
+        items.sortByDesc<num>((e) => e.mediaItemsCount?.tryAsInt ?? 0);
         break;
     }
     // items.sort((a, b) =>

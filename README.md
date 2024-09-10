@@ -25,6 +25,9 @@ start using the package.
 
 ## Usage
 
+- Enable "Google Photos Library API" in Google Cloud Console
+- https://console.cloud.google.com/apis/library/photoslibrary.googleapis.com
+- 
 TODO: Include short and useful examples for package users. Add longer examples
 to `/example` folder.
 

@@ -14,9 +14,11 @@ dependencies:
   googleapis_auth: ^1.4.1
   googleapis: ^11.4.0
   extension_google_sign_in_as_googleapis_auth: ^2.0.11
+  url_launcher: ^6.1.14
   shared_views:
-    path: ../shared_views
-
+    path: "/Users/samuel/StudioProjects/shared_views"
+  shared_core:
+    path: "/Users/samuel/StudioProjects/shared_core"
 dev_dependencies:
   flutter_test:
     sdk: flutter

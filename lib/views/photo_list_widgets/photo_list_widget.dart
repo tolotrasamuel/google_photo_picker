@@ -9,7 +9,7 @@ import 'package:shared_views/views/photo_viewer/photo_viewer_widget.dart';
 import 'package:shared_views/views/photoviewer_gallery/photoviewer_gallery.dart';
 import 'package:shared_views/views/refreshable_list/refreshable_list.dart';
 import 'package:shared_views/views/short_text_input_dialog.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class PhotoListWidget extends StatefulWidget {
   final String albumId;
   const PhotoListWidget({super.key, required this.albumId});

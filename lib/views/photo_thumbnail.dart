@@ -17,8 +17,7 @@ class PhotoThumbnail extends StatelessWidget {
           minWidth: 128,
         ),
         child: Container(
-          width: 128,
-          height: 128,
+
           child: _getAlbumThumbnailImage(coverPhotoBaseUrl),
         ),
       ),
@@ -31,6 +30,9 @@ class PhotoThumbnail extends StatelessWidget {
     }
     return CachedNetworkImage(
       imageUrl: url,
+      fit: BoxFit.cover,
+      height: 128,
+      width: 128,
       placeholder: (context, url) => Center(
         child: Container(
           height: 32,

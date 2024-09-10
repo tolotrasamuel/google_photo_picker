@@ -27,7 +27,11 @@ start using the package.
 
 - Enable "Google Photos Library API" in Google Cloud Console
 - https://console.cloud.google.com/apis/library/photoslibrary.googleapis.com
-- 
+- For web, it seems that "People API" is also required
+- Also, the client_id needs to be added in the meta tag of web/index.html
+- It can be obtained from Google Cloud Console at https://console.cloud.google.com/apis/credentials?project=app-gallery-b4090
+- I don't know why the simple Authentication didn't require those two steps
+- If you used Firebase, your OAuth 2.0 client ID is already generated under Oauth 2.0 Client IDs > Web client (auto created by Firebase) > Client ID 
 TODO: Include short and useful examples for package users. Add longer examples
 to `/example` folder.
 

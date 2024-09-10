@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
@@ -7,21 +6,21 @@ import 'package:googleapis/photoslibrary/v1.dart' as gp;
 import 'package:googleapis/photoslibrary/v1.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 const thumbnailSize = 'w256-h256';
 const originalSize = 'd';
 const originalSizeVideo = 'dv';
 
-final iosClientId =
-// '223888301605-utcolsavqjq3raprfjjml0mvcmh8ptik.apps.googleusercontent.com';
-    '223888301605-n8uecni4l4erpbhb80dub2mm5sfkfpf4.apps.googleusercontent.com';
-final androidClientId =
-    '223888301605-56d2n3eciapd5cu9268t2q52vj0gqd3t.apps.googleusercontent.com';
+// final iosClientId =
+// // '223888301605-utcolsavqjq3raprfjjml0mvcmh8ptik.apps.googleusercontent.com';
+//     '223888301605-n8uecni4l4erpbhb80dub2mm5sfkfpf4.apps.googleusercontent.com';
+// final androidClientId =
+//     '223888301605-56d2n3eciapd5cu9268t2q52vj0gqd3t.apps.googleusercontent.com';
 const scopes = <String>[
   PhotosLibraryApi.photoslibraryScope,
 ];
 final GoogleSignIn _googleSignIn = GoogleSignIn(
-  clientId: (Platform.isIOS || Platform.isMacOS) ? iosClientId : null,
+  // clientId: (Platform.isIOS || Platform.isMacOS) ? iosClientId : null,
   scopes: scopes,
 );
 
@@ -42,7 +41,11 @@ class GooglePhotoApi {
   Future<GoogleSignInAccount?> getUser() async {
     // _googleSignIn.tok
     print("Getting user");
-    GoogleSignInAccount? user = await _googleSignIn.signInSilently();
+
+    GoogleSignInAccount? user;
+    if (!kIsWeb) {
+      user = await _googleSignIn.signInSilently();
+    }
     // await user?.clearAuthCache();
     // print("Auth headers: ${await user?.authHeaders}");
     user ??= await _googleSignIn.signIn();

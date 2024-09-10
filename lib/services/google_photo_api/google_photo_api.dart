@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 
 const thumbnailSize = 'w256-h256';
 const originalSize = 'd';
-const originalSizeVideo = 'd';
+const originalSizeVideo = 'dv';
 
 final iosClientId =
 // '223888301605-utcolsavqjq3raprfjjml0mvcmh8ptik.apps.googleusercontent.com';

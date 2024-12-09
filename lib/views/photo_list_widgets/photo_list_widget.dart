@@ -175,7 +175,7 @@ class _PhotoListWidgetState extends State<PhotoListWidget> {
               },
               items: items,
               noResultMessage: "No Media found",
-              reset: _reload,
+              resetPaginationState: _reload,
               builder: (media) {
                 final url = media.baseUrl;
                 if (url == null) return Container();

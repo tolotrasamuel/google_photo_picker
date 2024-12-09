@@ -193,7 +193,7 @@ class _AlbumsWidgetState extends State<AlbumsWidget> {
                   if (items.isNotEmpty) return [];
                   return fetchAlbums();
                 },
-                reset: () async {
+                resetPaginationState: () async {
                   _reload();
                   // return await _activityService.reset();
                 },

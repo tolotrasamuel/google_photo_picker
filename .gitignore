@@ -29,3 +29,6 @@ migrate_working_dir/
 build/
 .idea/workspace.xml
 .fvm/
+
+node_modules/
+
